@@ -1,0 +1,34 @@
+# Go 编译产物
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Go workspace
+go.work
+go.work.sum
+
+# IDE
+.idea/
+.vscode/
+
+# 系统文件
+.DS_Store
+
+# 日志
+*.log
+
+# 环境变量和敏感配置
+.env
+*.local.yaml
+*.local.yml
+
+# 临时目录
+tmp/
+logs/
+
+# 项目笔记目录
+notes/
