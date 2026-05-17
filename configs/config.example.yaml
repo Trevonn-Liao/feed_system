@@ -1,0 +1,25 @@
+server:
+  addr: ":8080"
+
+mysql:
+  dsn: "root:root@tcp(127.0.0.1:3306)/feed_system?charset=utf8mb4&parseTime=True&loc=Local"
+
+redis:
+  addr: "127.0.0.1:6379"
+  password: ""
+  db: 0
+
+jwt:
+  access_secret: "replace-with-your-access-secret"
+  refresh_secret: "replace-with-your-refresh-secret"
+  access_ttl_seconds: 900
+  refresh_ttl_seconds: 604800
+  issuer: "feed_system"
+
+bloom:
+  capacity: 100000
+  error_rate: 0.001
+
+snowflake:
+  worker_id: 1
+  datacenter_id: 1

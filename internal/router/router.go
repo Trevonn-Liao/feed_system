@@ -1,6 +1,8 @@
 package router
 
 import (
+	"feed_system/internal/bootstrap"
+	"feed_system/internal/handler"
 	"feed_system/internal/middleware"
 	"feed_system/internal/response"
 
@@ -9,7 +11,7 @@ import (
 	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
-func New() *gin.Engine {
+func New(app *bootstrap.App) *gin.Engine {
 	r := gin.Default()
 
 	r.Use(middleware.ErrorHandler())
@@ -34,6 +36,17 @@ func New() *gin.Engine {
 		})
 		return nil
 	}))
+
+	authHandler := handler.NewAuthHandler(app.Auth)
+	v1 := r.Group("/api/v1")
+	{
+		auth := v1.Group("/auth")
+		{
+			auth.POST("/register", authHandler.Register)
+			auth.POST("/login", authHandler.Login)
+			auth.POST("/refresh", authHandler.Refresh)
+		}
+	}
 
 	return r
 }
