@@ -32,3 +32,4 @@ logs/
 
 # 项目笔记目录
 notes/
+/.gocache/

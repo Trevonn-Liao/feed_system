@@ -4,6 +4,7 @@ import (
 	"log"
 
 	_ "feed_system/docs"
+	"feed_system/internal/bootstrap"
 	"feed_system/internal/router"
 )
 
@@ -13,9 +14,10 @@ import (
 // @host localhost:8080
 // @BasePath /
 func main() {
-	r := router.New()
+	app := bootstrap.New()
+	r := router.New(app)
 
-	if err := r.Run(":8080"); err != nil {
+	if err := r.Run(app.Config.Server.Addr); err != nil {
 		log.Fatalf("failed to start server: %v", err)
 	}
 }
