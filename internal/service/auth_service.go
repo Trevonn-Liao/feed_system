@@ -82,7 +82,7 @@ func (s *AuthService) Register(c *gin.Context) error {
 
 	registerKey := "register:" + username
 	if !s.guard.Allow(registerKey) {
-		return errs.New(42900, "too many repeated requests", http.StatusTooManyRequests)
+		return errs.TooManyRequests()
 	}
 
 	existing, err := s.users.FindByUsername(username)
@@ -90,7 +90,7 @@ func (s *AuthService) Register(c *gin.Context) error {
 		return errs.Wrap(err, errs.CodeInternal, "query user failed", http.StatusInternalServerError)
 	}
 	if existing != nil {
-		return errs.New(40901, "username already exists", http.StatusConflict)
+		return errs.UsernameExists()
 	}
 
 	hash, err := password.Hash(req.Password)
@@ -127,14 +127,14 @@ func (s *AuthService) Login(c *gin.Context) error {
 	username := strings.TrimSpace(req.Username)
 	key := "login:" + username
 	if !s.guard.Allow(key) {
-		return errs.New(42900, "too many repeated requests", http.StatusTooManyRequests)
+		return errs.TooManyRequests()
 	}
 
 	mightContain, err := s.bloom.MightContain(key)
 	if err != nil {
 		log.Printf("redis bloom query failed, fallback to mysql: %v", err)
 	} else if !mightContain {
-		return errs.New(40101, "user not found", http.StatusUnauthorized)
+		return errs.UserNotFound()
 	}
 
 	user, err := s.users.FindByUsername(username)
@@ -142,11 +142,11 @@ func (s *AuthService) Login(c *gin.Context) error {
 		return errs.Wrap(err, errs.CodeInternal, "query user failed", http.StatusInternalServerError)
 	}
 	if user == nil {
-		return errs.New(40101, "user not found", http.StatusUnauthorized)
+		return errs.UserNotFound()
 	}
 
 	if err := password.Compare(user.PasswordHash, req.Password); err != nil {
-		return errs.New(40102, "password incorrect", http.StatusUnauthorized)
+		return errs.PasswordIncorrect()
 	}
 
 	access, refresh, err := s.tokens.BuildPair(user.ID)
@@ -172,7 +172,7 @@ func (s *AuthService) Refresh(c *gin.Context) error {
 
 	access, refresh, userID, err := s.tokens.RefreshPair(req.RefreshToken)
 	if err != nil {
-		return errs.New(40103, "refresh token invalid", http.StatusUnauthorized)
+		return errs.RefreshTokenInvalid()
 	}
 
 	response.Success(c, LoginResponse{

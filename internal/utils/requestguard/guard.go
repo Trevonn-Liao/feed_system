@@ -20,6 +20,9 @@ func New(rdb *redis.Client, window time.Duration) *Guard {
 }
 
 func (g *Guard) Allow(key string) bool {
-	ok, err := g.rdb.SetNX(context.Background(), key, "1", g.window).Result()
-	return err == nil && ok
+	result, err := g.rdb.SetArgs(context.Background(), key, "1", redis.SetArgs{
+		Mode: "NX",
+		TTL:  g.window,
+	}).Result()
+	return err == nil && result == "OK"
 }
