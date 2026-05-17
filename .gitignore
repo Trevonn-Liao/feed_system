@@ -23,6 +23,8 @@ go.work.sum
 
 # 环境变量和敏感配置
 .env
+configs/config.local.yaml
+configs/dev_local.yaml
 *.local.yaml
 *.local.yml
 

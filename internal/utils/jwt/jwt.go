@@ -1,14 +1,11 @@
 package jwt
 
 import (
-	"crypto/hmac"
-	"crypto/sha256"
-	"encoding/base64"
-	"encoding/json"
 	"errors"
 	"strconv"
-	"strings"
 	"time"
+
+	gojwt "github.com/golang-jwt/jwt/v5"
 )
 
 type TokenType string
@@ -21,10 +18,7 @@ const (
 type Claims struct {
 	UserID int64     `json:"user_id"`
 	Typ    TokenType `json:"typ"`
-	Sub    string    `json:"sub"`
-	Iss    string    `json:"iss"`
-	Iat    int64     `json:"iat"`
-	Exp    int64     `json:"exp"`
+	gojwt.RegisteredClaims
 }
 
 type Manager struct {
@@ -70,75 +64,43 @@ func (m *Manager) RefreshPair(refreshToken string) (string, string, int64, error
 }
 
 func (m *Manager) Parse(token string, typ TokenType) (*Claims, error) {
-	parts := strings.Split(token, ".")
-	if len(parts) != 3 {
-		return nil, errors.New("invalid token format")
-	}
-
-	payload, err := base64.RawURLEncoding.DecodeString(parts[1])
+	claims := &Claims{}
+	parsed, err := gojwt.ParseWithClaims(token, claims, func(t *gojwt.Token) (interface{}, error) {
+		if _, ok := t.Method.(*gojwt.SigningMethodHMAC); !ok {
+			return nil, errors.New("unexpected signing method")
+		}
+		if typ == TokenTypeRefresh {
+			return m.refreshSecret, nil
+		}
+		return m.accessSecret, nil
+	}, gojwt.WithIssuer(m.issuer))
 	if err != nil {
 		return nil, err
 	}
-
-	var claims Claims
-	if err := json.Unmarshal(payload, &claims); err != nil {
-		return nil, err
+	if !parsed.Valid {
+		return nil, errors.New("invalid token")
 	}
 	if claims.Typ != typ {
 		return nil, errors.New("token type mismatch")
 	}
-	if claims.Iss != m.issuer {
-		return nil, errors.New("issuer mismatch")
-	}
-	if time.Now().Unix() > claims.Exp {
-		return nil, errors.New("token expired")
-	}
-
-	secret := m.accessSecret
-	if typ == TokenTypeRefresh {
-		secret = m.refreshSecret
-	}
-	expected, err := m.sign(parts[0]+"."+parts[1], secret)
-	if err != nil {
-		return nil, err
-	}
-	if !hmac.Equal([]byte(expected), []byte(parts[2])) {
-		return nil, errors.New("signature mismatch")
-	}
-	return &claims, nil
+	return claims, nil
 }
 
 func (m *Manager) build(userID int64, typ TokenType, ttl time.Duration, secret []byte) (string, error) {
-	now := time.Now().Unix()
+	now := time.Now()
 	claims := Claims{
 		UserID: userID,
 		Typ:    typ,
-		Sub:    strconv.FormatInt(userID, 10),
-		Iss:    m.issuer,
-		Iat:    now,
-		Exp:    now + int64(ttl.Seconds()),
+		RegisteredClaims: gojwt.RegisteredClaims{
+			Issuer:    m.issuer,
+			Subject:   strconv.FormatInt(userID, 10),
+			IssuedAt:  gojwt.NewNumericDate(now),
+			NotBefore: gojwt.NewNumericDate(now),
+			ExpiresAt: gojwt.NewNumericDate(now.Add(ttl)),
+		},
 	}
-	header := map[string]string{
-		"alg": "HS256",
-		"typ": "JWT",
-	}
-	headerJSON, _ := json.Marshal(header)
-	payloadJSON, _ := json.Marshal(claims)
-	encodedHeader := base64.RawURLEncoding.EncodeToString(headerJSON)
-	encodedPayload := base64.RawURLEncoding.EncodeToString(payloadJSON)
-	signature, err := m.sign(encodedHeader+"."+encodedPayload, secret)
-	if err != nil {
-		return "", err
-	}
-	return encodedHeader + "." + encodedPayload + "." + signature, nil
-}
-
-func (m *Manager) sign(data string, secret []byte) (string, error) {
-	mac := hmac.New(sha256.New, secret)
-	if _, err := mac.Write([]byte(data)); err != nil {
-		return "", err
-	}
-	return base64.RawURLEncoding.EncodeToString(mac.Sum(nil)), nil
+	token := gojwt.NewWithClaims(gojwt.SigningMethodHS256, claims)
+	return token.SignedString(secret)
 }
 
 func (m *Manager) AccessTTL() time.Duration {

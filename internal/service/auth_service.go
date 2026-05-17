@@ -108,7 +108,7 @@ func (s *AuthService) Register(c *gin.Context) error {
 	}
 
 	if err := s.bloom.AddWithError("login:" + username); err != nil {
-		return errs.Wrap(err, errs.CodeInternal, "sync bloom failed", http.StatusInternalServerError)
+		log.Printf("sync bloom failed after user created: user_id=%d username=%s err=%v", user.ID, username, err)
 	}
 
 	response.Success(c, RegisterResponse{

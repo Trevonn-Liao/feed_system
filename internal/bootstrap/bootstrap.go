@@ -30,6 +30,11 @@ type App struct {
 
 func New() *App {
 	cfg := config.Load()
+	if cfg.JWT.AccessSecret == "" || cfg.JWT.RefreshSecret == "" ||
+		cfg.JWT.AccessSecret == "replace-with-your-access-secret" ||
+		cfg.JWT.RefreshSecret == "replace-with-your-refresh-secret" {
+		log.Fatal("valid jwt access_secret and refresh_secret must be set by configs/dev_local.yaml, configs/config.local.yaml, or environment variables")
+	}
 
 	db, err := gorm.Open(mysql.Open(cfg.MySQL.DSN), &gorm.Config{})
 	if err != nil {
@@ -55,7 +60,10 @@ func New() *App {
 	}
 
 	tokenMgr := jwt.New(cfg.JWT.AccessSecret, cfg.JWT.RefreshSecret, cfg.JWT.Issuer, cfg.JWT.AccessTokenTTL, cfg.JWT.RefreshTokenTTL)
-	bloomRepo := memory.NewBloomRepository(rdb, memory.BloomKey("users"), cfg.Bloom.Bits, cfg.Bloom.Hashes)
+	bloomRepo := memory.NewBloomRepository(rdb, memory.BloomKey("users"), cfg.Bloom.Capacity, cfg.Bloom.ErrorRate)
+	if err := bloomRepo.Init(context.Background()); err != nil {
+		log.Fatalf("init redis bloom failed: %v", err)
+	}
 	guard := requestguard.New(rdb, 2*time.Second)
 	userRepo := mysqlrepo.NewUserRepository(db)
 	loadBloomFromUsers(userRepo, bloomRepo)
