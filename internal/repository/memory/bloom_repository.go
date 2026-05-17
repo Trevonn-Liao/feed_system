@@ -35,21 +35,38 @@ func (r *BloomRepository) Add(value string) {
 	h1, h2 := bloomHashes(value)
 	for i := uint(0); i < r.hashes; i++ {
 		index := (h1 + uint64(i)*h2) % uint64(r.bitSize)
-		_ = r.rdb.SetBit(ctx, r.key, int64(index), 1).Err()
+		if err := r.rdb.SetBit(ctx, r.key, int64(index), 1).Err(); err != nil {
+			return
+		}
 	}
 }
 
-func (r *BloomRepository) MightContain(value string) bool {
+func (r *BloomRepository) AddWithError(value string) error {
+	ctx := context.Background()
+	h1, h2 := bloomHashes(value)
+	for i := uint(0); i < r.hashes; i++ {
+		index := (h1 + uint64(i)*h2) % uint64(r.bitSize)
+		if err := r.rdb.SetBit(ctx, r.key, int64(index), 1).Err(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (r *BloomRepository) MightContain(value string) (bool, error) {
 	ctx := context.Background()
 	h1, h2 := bloomHashes(value)
 	for i := uint(0); i < r.hashes; i++ {
 		index := (h1 + uint64(i)*h2) % uint64(r.bitSize)
 		v, err := r.rdb.GetBit(ctx, r.key, int64(index)).Result()
-		if err != nil || v == 0 {
-			return false
+		if err != nil {
+			return false, err
+		}
+		if v == 0 {
+			return false, nil
 		}
 	}
-	return true
+	return true, nil
 }
 
 func (r *BloomRepository) Load(values []string) {

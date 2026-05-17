@@ -14,6 +14,23 @@ func NewAuthHandler(auth *service.AuthService) *AuthHandler {
 	return &AuthHandler{auth: auth}
 }
 
+// Register godoc
+// @Summary Account password register
+// @Description Register by username and password only.
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param body body service.RegisterRequest true "register payload"
+// @Success 200 {object} response.Body
+// @Failure 400 {object} response.Body
+// @Failure 409 {object} response.Body
+// @Router /api/v1/auth/register [post]
+func (h *AuthHandler) Register(c *gin.Context) {
+	if err := h.auth.Register(c); err != nil {
+		_ = c.Error(err)
+	}
+}
+
 // Login godoc
 // @Summary Account password login
 // @Description Login by username and password only.

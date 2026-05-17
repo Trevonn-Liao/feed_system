@@ -62,8 +62,8 @@ func Load() Config {
 			DB:       getIntEnv("REDIS_DB", 0),
 		},
 		JWT: JWTConfig{
-			AccessSecret:    getEnv("JWT_ACCESS_SECRET", "change-me-access-secret"),
-			RefreshSecret:   getEnv("JWT_REFRESH_SECRET", "change-me-refresh-secret"),
+			AccessSecret:    getEnv("JWT_ACCESS_SECRET", "MngocHL52zG8fSF4AJ32morOAdbWd32AMnLu6aLqIOs="),
+			RefreshSecret:   getEnv("JWT_REFRESH_SECRET", "01lCeVmb2BlDnEgzQ81TWL5T3PZww8ArrvFw26tkXEE"),
 			AccessTokenTTL:  getDurationEnv("JWT_ACCESS_TTL_SECONDS", 15*60),
 			RefreshTokenTTL: getDurationEnv("JWT_REFRESH_TTL_SECONDS", 7*24*60*60),
 			Issuer:          getEnv("JWT_ISSUER", "feed_system"),
